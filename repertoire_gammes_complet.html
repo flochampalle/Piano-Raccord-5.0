@@ -1,0 +1,206 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Répertoire complet des gammes et modes</title>
+  <style>
+    body { font-family: sans-serif; background: #fff8e1; padding: 20px; }
+    h1, h2 { text-align: center; color: #4b2e0f; }
+    .gamme-block {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fdfaf5;
+    }
+    .gamme-label {
+      font-size: 18px;
+      width: 200px;
+    }
+    .notes {
+      display: flex;
+      gap: 4px;
+    }
+    .note {
+      width: 30px;
+      height: 30px;
+      line-height: 30px;
+      text-align: center;
+      border-radius: 50%;
+      background: #ccc;
+    }
+    .major { background-color: #87cefa !important; }
+    .minor { background-color: #f4a261 !important; }
+    .harmonic { background-color: #9b59b6 !important; }
+    .mode { background-color: #2ecc71 !important; }
+    .mini-piano {
+      display: flex;
+      position: relative;
+      width: 280px;
+      height: 60px;
+      margin-left: 10px;
+    }
+    .white-mini {
+      width: 40px;
+      height: 60px;
+      background: white;
+      border: 1px solid black;
+      box-sizing: border-box;
+      position: relative;
+      z-index: 1;
+    }
+    .black-mini {
+      width: 28px;
+      height: 35px;
+      background: black;
+      position: absolute;
+      z-index: 2;
+    }
+    .highlight-major { background-color: #87cefa !important; }
+    .highlight-minor { background-color: #f4a261 !important; }
+    .highlight-harmonic { background-color: #9b59b6 !important; }
+    .highlight-mode { background-color: #2ecc71 !important; }
+  </style>
+</head>
+<body>
+<h1>🎹 Répertoire complet des gammes et modes</h1>
+<div id="container"></div>
+
+<script>
+const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+const types = {
+  major: [0, 2, 4, 5, 7, 9, 11],
+  minor: [0, 2, 3, 5, 7, 8, 10],
+  harmonic: [0, 2, 3, 5, 7, 8, 11],
+  ionian: [0, 2, 4, 5, 7, 9, 11],
+  dorian: [0, 2, 3, 5, 7, 9, 10],
+  phrygian: [0, 1, 3, 5, 7, 8, 10],
+  lydian: [0, 2, 4, 6, 7, 9, 11],
+  mixolydian: [0, 2, 4, 5, 7, 9, 10],
+  aeolian: [0, 2, 3, 5, 7, 8, 10],
+  locrian: [0, 1, 3, 5, 6, 8, 10]
+};
+
+const GROUPS = [
+  { label: "Gammes majeures", suffix: " majeur", type: "major" },
+  { label: "Gammes mineures naturelles", suffix: " mineur", type: "minor" },
+  { label: "Gammes mineures harmoniques", suffix: " mineur harmonique", type: "harmonic" },
+  { label: "Modes grecs", suffix: "", type: "ionian", modes: [
+    { name: "Ionien", type: "ionian" },
+    { name: "Dorien", type: "dorian" },
+    { name: "Phrygien", type: "phrygian" },
+    { name: "Lydien", type: "lydian" },
+    { name: "Mixolydien", type: "mixolydian" },
+    { name: "Éolien", type: "aeolian" },
+    { name: "Locrien", type: "locrian" }
+  ]}
+];
+
+const container = document.getElementById("container");
+
+function createMiniPiano(scaleNotes, classSuffix) {
+  const whiteNotes = ["C", "D", "E", "F", "G", "A", "B"];
+  const blackNotes = { C: "C#", D: "D#", F: "F#", G: "G#", A: "A#" };
+  const div = document.createElement("div");
+  div.className = "mini-piano";
+
+  whiteNotes.forEach((wn, idx) => {
+    const noteIndex = notes.indexOf(wn);
+    const wKey = document.createElement("div");
+    wKey.className = "white-mini";
+    if (scaleNotes.includes(noteIndex)) {
+      wKey.classList.add("highlight-" + classSuffix);
+    }
+    div.appendChild(wKey);
+
+    if (blackNotes[wn]) {
+      const bn = blackNotes[wn];
+      const bIndex = notes.indexOf(bn);
+      const bKey = document.createElement("div");
+      bKey.className = "black-mini";
+      bKey.style.left = `${(idx * 40) + 28}px`;
+      if (scaleNotes.includes(bIndex)) {
+        bKey.style.background = classSuffix === "major" ? "#87cefa" :
+                                classSuffix === "minor" ? "#f4a261" :
+                                classSuffix === "harmonic" ? "#9b59b6" : "#2ecc71";
+      }
+      div.appendChild(bKey);
+    }
+  });
+
+  return div;
+}
+
+function addGroup(title, suffix, type, modes = null) {
+  const h2 = document.createElement("h2");
+  h2.textContent = title;
+  container.appendChild(h2);
+
+  const roots = Array.from({ length: 12 }, (_, i) => i);
+
+  if (modes) {
+    modes.forEach(mode => {
+      roots.forEach(root => {
+        const block = document.createElement("div");
+        block.className = "gamme-block";
+
+        const label = document.createElement("div");
+        label.className = "gamme-label";
+        label.textContent = `${notes[root]} ${mode.name}`;
+
+        const notesDiv = document.createElement("div");
+        notesDiv.className = "notes";
+        const scaleNotes = types[mode.type].map(i => (i + root) % 12);
+        scaleNotes.forEach(n => {
+          const span = document.createElement("div");
+          span.className = "note mode";
+          span.textContent = notes[n];
+          notesDiv.appendChild(span);
+        });
+
+        const piano = createMiniPiano(scaleNotes, "mode");
+
+        block.appendChild(label);
+        block.appendChild(notesDiv);
+        block.appendChild(piano);
+        container.appendChild(block);
+      });
+    });
+  } else {
+    roots.forEach(root => {
+      const block = document.createElement("div");
+      block.className = "gamme-block";
+
+      const label = document.createElement("div");
+      label.className = "gamme-label";
+      label.textContent = `${notes[root]}${suffix}`;
+
+      const notesDiv = document.createElement("div");
+      notesDiv.className = "notes";
+      const scaleNotes = types[type].map(i => (i + root) % 12);
+      scaleNotes.forEach(n => {
+        const span = document.createElement("div");
+        span.className = "note " + type;
+        span.textContent = notes[n];
+        notesDiv.appendChild(span);
+      });
+
+      const piano = createMiniPiano(scaleNotes, type);
+
+      block.appendChild(label);
+      block.appendChild(notesDiv);
+      block.appendChild(piano);
+      container.appendChild(block);
+    });
+  }
+}
+
+GROUPS.forEach(group => addGroup(group.label, group.suffix, group.type, group.modes));
+</script>
+</body>
+</html>

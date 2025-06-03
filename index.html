@@ -1,0 +1,276 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Piano Complet Interactif</title>
+  <script src="https://cdn.jsdelivr.net/npm/abcjs@6.2.3/bin/abcjs_basic_min.js"></script>
+  <style>
+    body { font-family: 'Georgia', serif; background: #fff8f0; padding: 20px; text-align: center; }
+    h1 { color: #4b2e0f; }
+    .controls { margin: 20px auto; display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+    button, select, input {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: none;
+    }
+    button { background: #4b2e0f; color: white; }
+    select { background: #eee; }
+    #keyboard { display: flex; justify-content: center; background: #222; padding: 10px; border-radius: 10px; margin-top: 20px; flex-wrap: nowrap; overflow-x: auto; }
+    .white-key, .black-key {
+      position: relative; user-select: none; cursor: pointer;
+      display: flex; align-items: flex-end; justify-content: center;
+      font-family: monospace;
+    }
+    .white-key {
+      width: 40px; height: 200px; background: white; border: 1px solid #000; z-index: 1;
+    }
+    .black-key {
+      width: 28px; height: 120px; background: black; color: white; position: absolute;
+      top: 0; left: 28px; z-index: 2;
+    }
+    .white-key.active { background: #a3d1ff; }
+    .black-key.active { background: #5591ff; }
+    .dot {
+      position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+      width: 10px; height: 10px; border-radius: 50%; z-index: 3;
+    }
+    .dot.major { background: #87cefa; }
+    .dot.minor { background: #f4a261; }
+    .output { font-size: 18px; margin-top: 10px; font-weight: bold; }
+    #notation { margin-top: 20px; background: white; padding: 20px; border-radius: 10px; }
+    #circle-modal { display: none; position: fixed; top: 10%; left: 50%; transform: translateX(-50%);
+                    background: white; padding: 10px; border: 2px solid #444; border-radius: 8px; z-index: 10; }
+    #circle-modal img { width: 100%; max-width: 400px; }
+    #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+               background: rgba(0, 0, 0, 0.6); z-index: 9; }
+  </style>
+</head>
+<body>
+  <h1>🎹 Piano Complet</h1>
+  <div class="controls">
+    <button onclick="toggleCircle()">🎯 Cercle des Accords</button>
+    <button onclick="playNotes()">🎵 Écouter</button>
+    <button onclick="addToScore()">➕ Ajouter à la partition</button>
+    <button onclick="clearSelection()">♻️ Réinitialiser</button>
+    <button onclick="window.open('repertoire_gammes_complet.html', '_blank')">📘 Répertoire des gammes</button>
+    <select id="gamme-select" onchange="selectScaleFromMenu()">
+      <option value="">-- Choisir une gamme --</option>
+      <option value="C_maj">Do majeur</option>
+      <option value="D_maj">Ré majeur</option>
+      <option value="E_maj">Mi majeur</option>
+      <option value="F_maj">Fa majeur</option>
+      <option value="G_maj">Sol majeur</option>
+      <option value="A_maj">La majeur</option>
+      <option value="B_maj">Si majeur</option>
+      <option value="C_min">Do mineur</option>
+      <option value="D_min">Ré mineur</option>
+      <option value="E_min">Mi mineur</option>
+      <option value="F_min">Fa mineur</option>
+      <option value="G_min">Sol mineur</option>
+      <option value="A_min">La mineur</option>
+      <option value="B_min">Si mineur</option>
+    </select>
+  </div>
+
+  <div id="keyboard"></div>
+  <div class="output" id="chord-display">Aucun accord détecté</div>
+  <div class="output" id="scale-display">Aucune gamme détectée</div>
+
+  <input id="titleInput" placeholder="Titre de votre partition" />
+  <div id="notation"></div>
+
+  <div id="overlay" onclick="toggleCircle()"></div>
+  <div id="circle-modal">
+    <img src="cercle_des_quintes.jpg" alt="Cercle des quintes" />
+    <button onclick="toggleCircle()">Fermer</button>
+  </div>
+
+<script>
+const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const MAJOR_SCALE = [0, 2, 4, 5, 7, 9, 11];
+const MINOR_SCALE = [0, 2, 3, 5, 7, 8, 10];
+const OCTAVES = [3, 4, 5];
+const WHITE_KEYS = ["C", "D", "E", "F", "G", "A", "B"];
+const BLACK_MAP = { "C": "C#", "D": "D#", "F": "F#", "G": "G#", "A": "A#" };
+const NOTE_TO_INT = Object.fromEntries(NOTES.map((n, i) => [n, i]));
+const INT_TO_NOTE = Object.fromEntries(NOTES.map((n, i) => [i, n]));
+
+const selectedNotes = new Set();
+const scoreChords = [];
+const keyMap = {};
+
+
+const CHORDS = [
+  { name: "", type: "majeur", intervals: [0, 4, 7], scale: MAJOR_SCALE },
+  { name: "m", type: "mineur", intervals: [0, 3, 7], scale: MINOR_SCALE },
+  { name: "sus2", type: "suspendu", intervals: [0, 2, 7], scale: MAJOR_SCALE },
+  { name: "sus4", type: "suspendu", intervals: [0, 5, 7], scale: MAJOR_SCALE },
+  { name: "7sus2", type: "suspendu", intervals: [0, 2, 7, 10], scale: MAJOR_SCALE },
+  { name: "7sus4", type: "suspendu", intervals: [0, 5, 7, 10], scale: MAJOR_SCALE },
+  { name: "9sus4", type: "suspendu", intervals: [0, 5, 7, 10, 14], scale: MAJOR_SCALE },
+  { name: "13sus4", type: "suspendu", intervals: [0, 5, 7, 10, 14, 17, 21], scale: MAJOR_SCALE },
+  { name: "dim", type: "diminué", intervals: [0, 3, 6], scale: MINOR_SCALE },
+  { name: "dim7", type: "diminué", intervals: [0, 3, 6, 9], scale: MINOR_SCALE },
+  { name: "aug", type: "augmenté", intervals: [0, 4, 8], scale: MAJOR_SCALE },
+  { name: "7", type: "dominant", intervals: [0, 4, 7, 10], scale: MAJOR_SCALE },
+  { name: "maj7", type: "jazz", intervals: [0, 4, 7, 11], scale: MAJOR_SCALE },
+  { name: "m7", type: "jazz", intervals: [0, 3, 7, 10], scale: MINOR_SCALE },
+  { name: "m9", type: "jazz", intervals: [0, 3, 7, 10, 14], scale: MINOR_SCALE },
+  { name: "maj9", type: "jazz", intervals: [0, 4, 7, 11, 14], scale: MAJOR_SCALE }
+];
+
+
+function normalize(n) {
+  return n.replace(/[0-9]/g, '').replace("Db", "C#").replace("Eb", "D#")
+          .replace("Gb", "F#").replace("Ab", "G#").replace("Bb", "A#");
+}
+
+function getIntervals(root, notes) {
+  const rootVal = NOTE_TO_INT[root];
+  return notes.map(n => (NOTE_TO_INT[n] - rootVal + 12) % 12).sort((a, b) => a - b);
+}
+
+function detectChord(notes) {
+  if (notes.length < 2) return null;
+  const norm = notes.map(normalize);
+  const bass = norm.reduce((lowest, n) => NOTE_TO_INT[n] < NOTE_TO_INT[lowest] ? n : lowest, norm[0]);
+  for (let root of norm) {
+    const intervals = getIntervals(root, norm);
+    for (let chord of CHORDS) {
+      if (chord.intervals.every(i => intervals.includes(i))) {
+        const label = `${root}${chord.name}` + (bass !== root ? `/${bass}` : "");
+        return { label, type: chord.type, root, scale: chord.scale };
+      }
+    }
+  }
+  return null;
+}
+
+function showScaleDots(rootNote, scale, type) {
+  const rootInt = NOTE_TO_INT[rootNote];
+  const scaleNotes = scale.map(i => (i + rootInt) % 12);
+  clearDots();
+  for (const noteName in keyMap) {
+    const base = normalize(noteName);
+    if (scaleNotes.includes(NOTE_TO_INT[base])) {
+      const dot = document.createElement("div");
+      dot.className = `dot ${type === "majeur" ? "major" : "minor"}`;
+      keyMap[noteName].appendChild(dot);
+    }
+  }
+}
+
+function clearDots() {
+  document.querySelectorAll(".dot").forEach(dot => dot.remove());
+}
+
+function updateChordDisplay() {
+  const notes = Array.from(selectedNotes);
+  const chord = detectChord(notes);
+  document.getElementById("chord-display").textContent = chord ? `Accord détecté : ${chord.label} (${chord.type})` : "Aucun accord détecté";
+  document.getElementById("scale-display").textContent = chord ? `Gamme : ${chord.root} ${chord.type}` : "Aucune gamme détectée";
+  if (chord) showScaleDots(chord.root, chord.scale, chord.type); else clearDots();
+}
+
+function toggleNote(note, el) {
+  if (selectedNotes.has(note)) {
+    selectedNotes.delete(note);
+    el.classList.remove("active");
+  } else {
+    selectedNotes.add(note);
+    el.classList.add("active");
+  }
+  updateChordDisplay();
+}
+
+function clearSelection() {
+  selectedNotes.clear();
+  clearDots();
+  document.querySelectorAll(".white-key, .black-key").forEach(k => k.classList.remove("active"));
+  updateChordDisplay();
+}
+
+function addToScore() {
+  const notes = Array.from(selectedNotes);
+  const chord = detectChord(notes);
+  if (chord) {
+    scoreChords.push(chord.label);
+    renderScore();
+  }
+}
+
+function renderScore() {
+  const title = document.getElementById("titleInput").value || "Progression";
+  const abc = `
+X:1
+T:${title}
+M:4/4
+L:1/1
+K:C
+${scoreChords.map(c => "\""+c+"\"" + " z").join(" | ")} |]
+  `;
+  abcjs.renderAbc("notation", abc, { responsive: "resize" });
+}
+
+function playNotes() {
+  const ctx = new AudioContext();
+  const osc = [];
+  const now = ctx.currentTime;
+  Array.from(selectedNotes).forEach(note => {
+    const n = NOTE_TO_INT[normalize(note)];
+    const f = 440 * Math.pow(2, (n - 9) / 12);
+    const o = ctx.createOscillator();
+    o.type = "sine";
+    o.frequency.value = f;
+    o.connect(ctx.destination);
+    o.start(now);
+    o.stop(now + 0.8);
+  });
+}
+
+function selectScaleFromMenu() {
+  const val = document.getElementById("gamme-select").value;
+  if (!val) return;
+  const [note, typ] = val.split("_");
+  const scale = typ === "maj" ? MAJOR_SCALE : MINOR_SCALE;
+  showScaleDots(note, scale, typ === "maj" ? "majeur" : "mineur");
+}
+
+function toggleCircle() {
+  const modal = document.getElementById("circle-modal");
+  const overlay = document.getElementById("overlay");
+  const isVisible = modal.style.display === "block";
+  modal.style.display = isVisible ? "none" : "block";
+  overlay.style.display = isVisible ? "none" : "block";
+}
+
+function createKeyboard() {
+  const keyboard = document.getElementById("keyboard");
+  OCTAVES.forEach(oct => {
+    WHITE_KEYS.forEach((w, i) => {
+      const note = w + oct;
+      const wkey = document.createElement("div");
+      wkey.className = "white-key";
+      wkey.textContent = w;
+      wkey.onclick = () => toggleNote(note, wkey);
+      keyboard.appendChild(wkey);
+      keyMap[note] = wkey;
+      if (BLACK_MAP[w]) {
+        const bnote = BLACK_MAP[w] + oct;
+        const bkey = document.createElement("div");
+        bkey.className = "black-key";
+        bkey.textContent = BLACK_MAP[w];
+        bkey.onclick = () => toggleNote(bnote, bkey);
+        wkey.appendChild(bkey);
+        keyMap[bnote] = bkey;
+      }
+    });
+  });
+}
+
+createKeyboard();
+</script>
+</body>
+</html>

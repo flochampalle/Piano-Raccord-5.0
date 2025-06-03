@@ -1,0 +1,57 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Piano Gammes - Principal</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; background: #f9f5ec; }
+    h1 { color: #4b2e0f; }
+    .controls { margin: 20px; }
+    button, select {
+      padding: 10px;
+      margin: 10px;
+      font-size: 16px;
+      background: #4b2e0f;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    iframe { border: 2px solid #333; margin-top: 20px; width: 100%; height: 300px; }
+  </style>
+</head>
+<body>
+  <h1>🎹 Piano Gammes</h1>
+  <div class="controls">
+    <label for="gamme-select">Choisissez une gamme :</label>
+    <select id="gamme-select" onchange="updateIframe()">
+      <option value="">-- Sélectionnez --</option>
+      <option value="C_maj">Do majeur</option>
+      <option value="D_maj">Ré majeur</option>
+      <option value="E_maj">Mi majeur</option>
+      <option value="F_maj">Fa majeur</option>
+      <option value="G_maj">Sol majeur</option>
+      <option value="A_maj">La majeur</option>
+      <option value="B_maj">Si majeur</option>
+      <option value="C_min">Do mineur</option>
+      <option value="D_min">Ré mineur</option>
+      <option value="E_min">Mi mineur</option>
+      <option value="F_min">Fa mineur</option>
+      <option value="G_min">Sol mineur</option>
+      <option value="A_min">La mineur</option>
+      <option value="B_min">Si mineur</option>
+    </select>
+    <button onclick="window.open('repertoire_gammes.html', '_blank')">📘 Répertoire complet</button>
+  </div>
+  <iframe id="gamme-frame" src=""></iframe>
+
+  <script>
+    function updateIframe() {
+      const gamme = document.getElementById("gamme-select").value;
+      if (gamme) {
+        document.getElementById("gamme-frame").src = "repertoire_gammes.html#" + gamme;
+      }
+    }
+  </script>
+</body>
+</html>

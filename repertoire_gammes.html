@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Répertoire des gammes</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #fff8e1; }
+    h2 { color: #333; }
+    .keyboard { margin: 10px 0; padding: 10px; background: #eee; border-radius: 8px; }
+    .note { display: inline-block; width: 30px; height: 30px; line-height: 30px;
+            text-align: center; margin: 2px; border-radius: 50%; background: #ccc; }
+    .major { background: #87cefa !important; }
+    .minor { background: #f4a261 !important; }
+  </style>
+</head>
+<body>
+  <h1>📘 Répertoire des gammes majeures et mineures</h1>
+  <div id="gammes-container"></div>
+
+  <script>
+    const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const major = [0, 2, 4, 5, 7, 9, 11];
+    const minor = [0, 2, 3, 5, 7, 8, 10];
+
+    const container = document.getElementById("gammes-container");
+
+    function createGamme(name, root, scale, type) {
+      const div = document.createElement("div");
+      div.className = "keyboard";
+      div.id = name;
+      const h2 = document.createElement("h2");
+      h2.textContent = `${name.replace("_", " ")} (${type})`;
+      div.appendChild(h2);
+
+      for (let i = 0; i < 12; i++) {
+        const n = (root + i) % 12;
+        const span = document.createElement("div");
+        span.className = "note" + (scale.includes(n) ? " " + type : "");
+        span.textContent = notes[n];
+        div.appendChild(span);
+      }
+      container.appendChild(div);
+    }
+
+    const gammes = [
+      ["C_maj", 0, major, "major"],
+      ["D_maj", 2, major, "major"],
+      ["E_maj", 4, major, "major"],
+      ["F_maj", 5, major, "major"],
+      ["G_maj", 7, major, "major"],
+      ["A_maj", 9, major, "major"],
+      ["B_maj", 11, major, "major"],
+      ["C_min", 0, minor, "minor"],
+      ["D_min", 2, minor, "minor"],
+      ["E_min", 4, minor, "minor"],
+      ["F_min", 5, minor, "minor"],
+      ["G_min", 7, minor, "minor"],
+      ["A_min", 9, minor, "minor"],
+      ["B_min", 11, minor, "minor"]
+    ];
+
+    gammes.forEach(g => createGamme(...g));
+
+    // Scroll automatique si une ancre est présente
+    if (location.hash) {
+      const el = document.querySelector(location.hash);
+      if (el) el.scrollIntoView();
+    }
+  </script>
+</body>
+</html>
